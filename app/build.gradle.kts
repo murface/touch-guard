@@ -2,6 +2,8 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "com.touchguard.peloton"
     compileSdk = 35
+    // Dedicated sideloaded Android 11 beta; Play Store publishing is out of scope.
+    lint { disable += "ExpiredTargetSdkVersion" }
     defaultConfig {
         applicationId = "com.touchguard.peloton"
         minSdk = 30
