@@ -1,0 +1,8 @@
+Touch Guard menu illustration
+Generated using the built-in image-generation tool, November 7, 2026.
+
+Final prompt:
+Use case: illustration-story. Asset type: original hero illustration for a playful native Android indoor cycling app called Touch Guard. Wide landscape 3:2 composition, polished editorial flat illustration with subtle grain and dimensional shading. A smiling determined athletic adult riding a generic indoor stationary exercise bike, wearing coral and turquoise sportswear, small joyful water droplets and energetic motion accents around them, a mint pentagon shield badge playfully deflecting droplets away from the bicycle touchscreen. Dark deep navy background #081522, mint turquoise #38DFC3, cream and coral accents. Welcoming, witty, sporty, not childish. Clear silhouettes, premium independent fitness app aesthetic. Subject centered with breathing room; no text anywhere, no logos, no lettering, no watermarks. This is the illustration itself, not an app screenshot or UI mockup. The art must look crisp when displayed at 280dp wide in a landscape Android tablet menu.
+
+App asset: app/src/main/res/drawable-nodpi/ride_hero.png
+The pentagon launcher and notification icons are native Android vector drawables.
