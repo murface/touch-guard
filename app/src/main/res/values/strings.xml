@@ -1,3 +1,3 @@
 <resources>
-    <string name="accessibility_description">Touch Guard blocks sweat-induced accidental touches with a clear overlay. Hold Volume Down for five seconds to turn protection on or off. You can choose both volume buttons in settings instead. It does not read screen content, collect workout data, or use the internet. Enable only when you want to use Touch Guard.</string>
+    <string name="accessibility_description">One Touch Guard app, two modes in Settings: Full Screen Lock blocks every screen touch. Lock with Social Access allows recognized high-fives, leaderboard scrolling, and song hearts while other controls stay blocked. Hold Volume Down for five seconds to turn protection on or off. Social mode reads Peloton control identities, positions, and high-five wording locally during protected gestures. No screen data is saved or uploaded. Full Screen Lock does not inspect screen content. No internet permission.</string>
 </resources>

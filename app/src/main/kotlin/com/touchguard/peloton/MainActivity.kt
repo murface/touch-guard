@@ -32,19 +32,20 @@ class MainActivity : Activity() {
     private val refresh=object:Runnable {
         override fun run() {
             val s=GuardService.instance
-            val summary="${s != null}/${s?.locked}/${s?.hardwareVerified}/${s?.lastMessage}/${s?.blockedTouches}"
+            val summary="${s != null}/${s?.locked}/${s?.hardwareVerified}/${s?.lastMessage}/${s?.blockedTouches}/${s?.socialActive}/${prefs.getBoolean("social_mode",false)}"
             if(summary != lastSummary) {
                 lastSummary=summary
                 status.text=if(s?.locked == true) "Protection is ON" else "Protection is OFF"
                 status.setTextColor(if(s?.locked == true) mint else ink)
                 detail.text=when {
-                    s == null -> "Enable the accessibility service to use touch protection and the hardware shortcut."
+                    s == null -> "Enable Touch Guard once to use either lock mode and the volume shortcut."
+                    s.socialActive -> "Social mode: recognized high-fives, song hearts, and leaderboard swipes only. All raw touches remain intercepted. Preview expires in 30 seconds."
                     s.locked -> "Sweat away and get that PR! Your screen is protected."
                     !s.hardwareVerified -> "Service enabled. First, try a 30-second safety test and unlock with your chosen shortcut."
                     else -> "Ready for your next ride. Hold your shortcut for five seconds to turn protection on."
                 }
                 permission.text=if(s == null) "Enable Touch Guard" else "Accessibility service enabled  ·  Manage"
-                protect.text=if(s?.hardwareVerified == true) "Turn protection ON" else "Try a 30-second safety test"
+                protect.text=if(prefs.getBoolean("social_mode",false)) "Try Lock with Social Access — 30 seconds" else if(s?.hardwareVerified == true) "Turn protection ON" else "Try a 30-second safety test"
                 protect.isEnabled=s != null
                 protect.alpha=if(s == null) 0.45f else 1f
             }
@@ -136,6 +137,23 @@ class MainActivity : Activity() {
             gap(12)
             addView(action("Unlock now") { GuardService.instance?.unlock("App unlock") })
         }
+        card("LOCK MODE") {
+            copy("Your ride. Your choice.",18f,ink,true); gap(8)
+            addView(selector(arrayOf("Full Screen Lock  ·  blocks every touch","Lock with Social Access  ·  30-second preview"),if(prefs.getBoolean("social_mode",false)) 1 else 0) { position ->
+                prefs.edit().putBoolean("social_mode",position==1).apply()
+            })
+            gap(12)
+            copy("Full Screen Lock",18f,ink,true)
+            copy("Blocks every screen touch. Your workout stays visible; use the volume shortcut to unlock.")
+            gap(14)
+            copy("Lock with Social Access",18f,ink,true)
+            copy("Keeps pause, metrics, time, settings, and background touches locked. Allows recognized leaderboard avatar high-fives, leaderboard scrolling, opening the song card, and liking songs. Incoming high-five replies are included experimentally and still need testing.")
+            gap(10)
+            copy("Social preview lasts 30 seconds. Leaderboard swipes move one page at a time. Unsupported workout screens fall back to Full Screen Lock. Only the inspected Original Bike workout app version is supported.",13f,Color.rgb(255,190,133))
+            gap(12)
+            copy("One app. One Android accessibility entry. Choose either mode here, then use the same five-second volume shortcut to turn protection ON and OFF.",14f,mint)
+        }
+
         card("YOUR SHORTCUT") {
             copy("Hold for five seconds. Release. Ride on.",18f,ink,true); gap(8)
             shortcut=selector(arrayOf("Volume Down  ·  hold 5 seconds","Both volume buttons  ·  hold 5 seconds"),if(prefs.getBoolean("both_keys",false)) 1 else 0) { position ->
@@ -156,16 +174,30 @@ class MainActivity : Activity() {
         }
         card("SETUP & SAFETY") {
             copy("Service enabled ≠ protection on",18f,ink,true); gap(6)
-            copy("The accessibility service makes the shortcut available. Touches are blocked only when the ON banner is visible.")
+            copy("Enable the single Touch Guard accessibility entry once. Choose your lock mode above. Leave Android’s separate accessibility shortcut OFF; Touch Guard handles the volume shortcut itself. Touches are blocked only when the ON banner is visible.")
             gap(16)
-            permission=action("Enable Touch Guard") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }; addView(permission)
+            permission=action("Enable Touch Guard") {
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Enable Touch Guard for both lock modes")
+                    .setMessage("Android grants one accessibility permission covering both modes. Full Screen Lock blocks every touch without inspecting screen content. Lock with Social Access identifies Peloton control IDs, positions, and high-five wording locally during protected gestures. Nothing is recorded or uploaded. Enable only the ‘Touch Guard’ entry; leave Android’s separate accessibility shortcut OFF. Choose your mode here afterward.")
+                    .setPositiveButton("Open Accessibility") { _,_ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                    .setNegativeButton("Cancel",null).show()
+            }; addView(permission)
             gap(12)
             addView(action("Open the safe touch-test screen") { startActivity(Intent(this@MainActivity,ProbeActivity::class.java)) })
             gap(12)
             copy("Each time the service starts, or you change shortcuts, the first lock is a 30-second test. Unlock with your shortcut to enable longer locks.",13f)
             gap(12)
             copy("Need an escape?",16f,ink,true); gap(6)
-            copy("Hold three fingers on the screen for eight seconds, or turn the display off with the physical power button. A Mac emergency-unlock tool is also available. Protection always starts OFF after a restart.",13f)
+            copy("Use the five-second hardware shortcut, wait for the timeout, or turn the display off with the physical power button. A Mac emergency-unlock tool is also available. Protection always starts OFF after a restart.",13f)
+            gap(16)
+            addView(Switch(this@MainActivity).apply {
+                text="Three-finger emergency unlock · experimental";textSize=15f;setTextColor(ink)
+                isChecked=prefs.getBoolean("three_finger_escape",false)
+                setOnCheckedChangeListener { _,checked -> prefs.edit().putBoolean("three_finger_escape",checked).apply() }
+            })
+            gap(6)
+            copy("OFF by default. When enabled, three contacts held for eight seconds unlock the screen. Persistent sweat contacts may trigger it. Enable deliberately for your sweaty-ride test.",13f,Color.rgb(255,190,133))
         }
         card("WHY WE MADE THIS") {
             copy("Sweat belongs in your workout. Not on the pause button.",21f,ink,true); gap(10)
@@ -173,11 +205,11 @@ class MainActivity : Activity() {
             gap(12)
             copy("A clear touch-blocking layer. A physical-button shortcut. No rooting or changes to the Peloton workout app.")
             gap(12)
-            copy("No internet permission. No screen-content reading. No workout-data collection.",13f,mint)
+            copy("No internet permission or uploads. Full Lock does not read screen content. Lock with Social Access identifies Peloton controls locally only when handling a protected gesture. Android grants the same single permission for both modes.",13f,mint)
             gap(12)
             copy("Independent community project. Not affiliated with Peloton. Tested touch blocking and volume-button unlocking on an Original Bike with Android 11; workout playback testing is still in progress.",12f)
         }
-        column.copy("TOUCH GUARD  ·  BETA 0.1.2",12f,muted,true).gravity=Gravity.CENTER
+        column.copy("TOUCH GUARD  ·  SOCIAL PREVIEW 0.2.0-2",12f,muted,true).gravity=Gravity.CENTER
         setContentView(scroll)
     }
     private fun arm(test:Boolean,minutes:Int) {

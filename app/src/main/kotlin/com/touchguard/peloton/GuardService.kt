@@ -20,9 +20,13 @@ class GuardService : AccessibilityService() {
     }
     private val handler = Handler(Looper.getMainLooper())
     private val hold = HoldTracker()
+    private val socialControls=SocialControls(this)
     // Keep each key's DOWN/repeat/UP routing consistent across a toggle.
     private val consumed = mutableMapOf<Int,Boolean>()
     private var overlay: GuardView? = null
+    var socialActive=false; private set
+    val socialPreferred get()=getSharedPreferences("guard",MODE_PRIVATE).getBoolean("social_mode",false)
+    private val threeFingerEnabled get()=getSharedPreferences("guard",MODE_PRIVATE).getBoolean("three_finger_escape",false)
     private var wm: WindowManager? = null
     private var until = 0L
     private var test = false
@@ -74,7 +78,7 @@ class GuardService : AccessibilityService() {
             NotificationChannel("guard", "Touch Guard status", NotificationManager.IMPORTANCE_LOW))
         Log.i(TAG, "Accessibility connected; unlocked")
     }
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {} // Never inspect content.
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {} // Ignore background events; Social controls are checked only during protected gestures.
     override fun onInterrupt() { unlock("Accessibility interrupted") }
     override fun onUnbind(intent: Intent?): Boolean { unlock("Accessibility disabled"); return super.onUnbind(intent) }
     override fun onDestroy() {
@@ -88,10 +92,11 @@ class GuardService : AccessibilityService() {
         if (locked) return false
         if (!testMode && !verified) { lastMessage = "Complete a volume-button unlock test first"; return false }
         if (!(getSystemService(PowerManager::class.java).isInteractive)) return false
+        socialActive=socialPreferred && socialControls.supportedWorkout()
         test = testMode
         blockedTouches = 0
         hold.requireRelease()
-        until = SystemClock.uptimeMillis() + if (testMode) 30000L else minutes.coerceIn(1,120) * 60000L
+        until = SystemClock.uptimeMillis() + if (testMode || socialActive) 30000L else minutes.coerceIn(1,120) * 60000L
         val view = GuardView()
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
@@ -110,8 +115,8 @@ class GuardService : AccessibilityService() {
             overlay = view
             showNotification()
             handler.post(tick)
-            lastMessage = if (test) "30-second test active" else "Locked"
-            announce("Touch Guard is ON\nSweat away and get that PR!")
+            lastMessage = if(socialActive) "Control-aware Social preview — 30-second timeout" else if(socialPreferred) "Full Lock: Social Access unavailable or workout unsupported" else if(test) "30-second test active" else "Locked"
+            announce(if(socialActive) "Social mode is ON\nHigh fives & hearts. Pause stays covered." else if(socialPreferred) "Full Lock is ON\nSocial controls are unavailable." else "Touch Guard is ON\nSweat away and get that PR!")
             Log.i(TAG, "LOCK mode=${if(test) "test" else "ride"}")
             return true
         } catch (e: Exception) {
@@ -125,6 +130,7 @@ class GuardService : AccessibilityService() {
         handler.removeCallbacks(holdFinished)
         val old = overlay
         overlay = null
+        socialActive=false
         if (old != null) {
             try { wm?.removeViewImmediate(old) } catch (e: Exception) { Log.w(TAG, "Overlay removal", e) }
             Log.i(TAG, "UNLOCK reason=$reason blockedTouches=$blockedTouches")
@@ -134,6 +140,7 @@ class GuardService : AccessibilityService() {
         getSystemService(NotificationManager::class.java).cancel(1)
         lastMessage = reason
     }
+
     private fun announce(message: String) {
         statusToast?.cancel()
         statusToast = Toast.makeText(this,message,Toast.LENGTH_LONG).also { it.show() }
@@ -183,7 +190,7 @@ class GuardService : AccessibilityService() {
         val stop = PendingIntent.getBroadcast(this, 2, Intent(this, UnlockReceiver::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val icon = resources.getIdentifier("ic_guard_status","drawable",packageName)
         val n = Notification.Builder(this, "guard").setSmallIcon(icon)
-            .setContentTitle("Touch Guard is ON — Sweat away and get that PR!")
+            .setContentTitle(if(socialActive) "Social mode ON — high fives & hearts!" else "Touch Guard is ON — Sweat away and get that PR!")
             .setContentText("Touches blocked. Hold $shortcutLabel 5 seconds to turn OFF.")
             .setOngoing(true).setContentIntent(open)
             .addAction(Notification.Action.Builder(null, "Unlock", stop).build()).build()
@@ -192,8 +199,10 @@ class GuardService : AccessibilityService() {
     private inner class GuardView : View(this@GuardService) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         private var escapeAt = -1L
+        private var gesture:SocialControls.Gesture?=null
+        private var multipleContacts=false
         private val escape = Runnable {
-            if (escapeAt >= 0L && SystemClock.uptimeMillis() - escapeAt >= 8000L) unlock("Three-finger emergency hold")
+            if (threeFingerEnabled && escapeAt >= 0L && SystemClock.uptimeMillis() - escapeAt >= 8000L) unlock("Three-finger emergency hold")
         }
         init { setBackgroundColor(Color.TRANSPARENT); importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
         override fun onDraw(canvas: Canvas) {
@@ -202,12 +211,22 @@ class GuardService : AccessibilityService() {
             canvas.drawRoundRect(12f*density,12f*density,420f*density,72f*density,8f*density,8f*density,paint)
             paint.color = Color.WHITE; paint.textSize = 15f*density
             val seconds = ceil((until - SystemClock.uptimeMillis()).coerceAtLeast(0L)/1000.0).toInt()
-            canvas.drawText("TOUCH GUARD · ${if(test) "TEST" else "LOCKED"} · ${seconds/60}:${(seconds%60).toString().padStart(2,'0')}",24f*density,36f*density,paint)
+            canvas.drawText("TOUCH GUARD · ${if(socialActive) "SOCIAL PREVIEW" else if(test) "TEST" else "LOCKED"} · ${seconds/60}:${(seconds%60).toString().padStart(2,'0')}",24f*density,36f*density,paint)
             paint.textSize = 12f*density
-            canvas.drawText("Unlock: $shortcutLabel 5s · or three fingers 8s",24f*density,57f*density,paint)
+            canvas.drawText(if(threeFingerEnabled) "Unlock: $shortcutLabel 5s · or three fingers 8s" else "Unlock: $shortcutLabel 5s · three-finger escape OFF",24f*density,57f*density,paint)
         }
         override fun onTouchEvent(event: MotionEvent): Boolean {
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) blockedTouches++
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                blockedTouches++;multipleContacts=false
+                gesture=if(socialActive) socialControls.capture(event.rawX.toInt(),event.rawY.toInt()) else null
+            }
+            if(event.pointerCount>1 || event.actionMasked==MotionEvent.ACTION_POINTER_DOWN) { multipleContacts=true;gesture=null }
+            if(event.actionMasked==MotionEvent.ACTION_UP) {
+                val start=gesture;gesture=null
+                if(socialActive && !multipleContacts && start!=null) socialControls.finish(start,event.rawX.toInt(),event.rawY.toInt())
+            }
+            if(event.actionMasked==MotionEvent.ACTION_CANCEL)gesture=null
+            if(!threeFingerEnabled) { escapeAt = -1L; handler.removeCallbacks(escape); return true }
             val count = when(event.actionMasked) {
                 MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> 0
                 MotionEvent.ACTION_POINTER_UP -> event.pointerCount - 1

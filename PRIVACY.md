@@ -1,9 +1,11 @@
-# Privacy
+# Touch Guard privacy — 0.2.0-preview2
 
-Touch Guard runs locally on the Android device. It has no internet permission and does not transmit data. It contains no ads, analytics, user accounts, remote services, camera access, microphone access, location access, or storage-scanning features.
+Touch Guard is one app with one Android accessibility service and two modes selected inside its settings.
 
-The accessibility service receives volume-key events so it can detect the selected five-second shortcut. Events for other keys are not used. In single-button mode it replaces a short Volume Down press with one media-volume adjustment on release. The service requests window-state event notifications but ignores their content. It does not request permission to retrieve screen content, inspect the accessibility view hierarchy, record the screen, or collect workout metrics.
+**Full Screen Lock** blocks all screen touches without inspecting screen content.
 
-The app saves the selected hardware shortcut and maximum lock duration in local preferences. The current lock state, touch count, and hardware-test result are held in memory. Android may retain diagnostic log messages identifying lock/unlock reasons, volume-key event codes, and a count of blocked touches. These logs do not contain screen text, workout metrics, account names, or pairing codes, and the app does not send them anywhere.
+**Lock with Social Access** reads Peloton control IDs, positions, and high-five notification wording locally when handling a protected gesture. It uses these to identify supported avatar high-fives, incoming replies, leaderboard scrolling, and song controls. Incoming replies remain unverified on the bike. Unsupported screens or controls remain blocked. Android grants screen-content access to the single service for both modes; the app only calls its control-identification code when Social mode is selected or active.
 
-Removing the app removes its local preferences. Android controls system-log retention. GitHub, OpenPelo, Android, and Peloton have their own privacy practices; this statement describes Touch Guard only. If you submit a bug report, review its contents yourself before posting it publicly.
+No internet permission, uploads, analytics, ads, accounts, or stored screen content. Only app settings are saved. Transient target identities and a hash of notification wording are held in memory during a gesture to recheck that its target has not changed.
+
+The service handles the volume-button shortcut and draws the transparent blocking overlay. Android's separate accessibility shortcut is not needed. Neither mode edits Peloton's app or firmware.
