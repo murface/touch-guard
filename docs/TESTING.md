@@ -1,40 +1,39 @@
-# Beta test matrix
+# Touch Guard beta: evidence and limits
 
-## Confirmed on one Original Bike / Android 11 tablet
+Current release: **v0.2.0-preview14**, Android API 30+. Hardware observations and owner reports below concern **one Original Bike running Android 11**, with Peloton workout app **2.8.3457 / versionCode 2083457**. They do not establish compatibility with every tablet, firmware or future app update.
 
-- APK installation through OpenPelo's bundled ADB.
-- Transparent 1920 x 1080 accessibility overlay with the underlying window retaining focus.
-- Taps across an isolated touch-test screen did not increment its underlying touch counter while locked; taps resumed after unlock.
-- Automatic 30-second test timeout.
-- Both-volume-buttons unlock after a continuous five-second hold, after clearing a conflicting TalkBack shortcut.
-- Default Volume Down-only five-second ON/OFF toggling, confirmed by the device owner.
-- ON/OFF popups and the illustrated menu on the device.
-- Pure Kotlin timing checks for single-key and dual-key holds, repeats, releases, one toggle per hold, interrupted overlap, and separation from the two-key TalkBack gesture.
+## Confirmed through owner testing and device inspection
 
-## Implemented, but not fully verified on hardware
+- Signed APK installation and updates using OpenPelo, preserving settings.
+- Full Lock intercepting touches on the isolated test screen; touches resume after unlock.
+- Default five-second Volume Down ON/OFF toggling, with full release between holds.
+- Optional both-volume-buttons unlock after clearing a conflicting TalkBack shortcut.
+- One app/service, mode selector, illustrated menu/settings, transient ON/OFF feedback.
+- Social Mode leaderboard page scrolling and avatar high-fives. The owner reported return high-fives; the usual Peloton animation did not always appear. Local accepted-action feedback was added.
+- Music-note opening, song hearts and incoming left-feed high-five/milestone replies, ultimately reported working by the owner after successive control-lookup corrections.
+- Selected 120-minute normal lock timer verified directly on its first activation after removing the former hardware-test gate. This verifies timer assignment, not a two-hour endurance run.
+- Owner reports successful ride use. This is not a complete, instrumented video/audio/metrics endurance certification of every Social Mode revision.
+- After a sweaty ride, touch remained unresponsive after OFF; drying and a brief physical sleep/wake restored it. The cause was not conclusively isolated. Preview14 adds an OFF reminder about a completely dry screen and hands.
 
-- Three-finger eight-second emergency escape.
-- Unlock on physical display power-off.
-- Notification action and connected-computer force-stop escape.
-- Every 30/60/90/120-minute maximum-duration boundary.
-- Short Volume Down press changes media volume by exactly one step; a completed five-second hold should not change it.
-- Retained key-event routing when lock state changes during a held key.
+## Automated and build checks
 
-## Still needed before claiming a workout fix
+Release assembly, unit tests and APK signature verification passed for preview14.
+Tests cover physical-key hold/release/repeat/interruption behavior, social-control
+policy and lock-duration rules, including immediate configured duration and the
+separate optional 30-second test. The published APK uses the existing distribution
+certificate; CI development builds use a different certificate.
 
-- Continuous class video and audio during lock/unlock.
-- Cadence, resistance, output, leaderboard, and ride recording continue normally.
-- Real sweat, multiple contacts, edge swipes, and system dialogs do not activate workout controls.
-- Emergency recovery outside a workout, then during a disposable short test.
-- Behavior after service/process restart and reboot, with protection starting OFF.
-- Installation/update/uninstall on other tablet and firmware versions.
+## Still needs broader validation
 
-Please report exactly which rows you tested. A successful install or APK metadata probe does not establish working playback or safe hardware-key behavior. No other Peloton model or Android version has been certified by this project.
+- Extended use of the newest Social Mode build during a complete sweaty ride,
+  including continuous playback/audio/metrics and accidental-touch resistance.
+- Every configured 30/60/90/120/180/240/360-minute timeout in real elapsed time.
+- Every notification, screen-off, computer-stop and restart/reboot recovery path.
+- Optional three-finger eight-second escape under heavy sweat; OFF by default.
+- All short-volume-press edge cases and key routing across Android variants.
+- Other Peloton models, firmware, resolutions and workout-app versions.
 
-## v0.2.0-preview2 Social mode
-
-Confirmed: signed same-key update installs; Android shows one Touch Guard accessibility entry with both key filtering and content-access capabilities; illustrated settings show both modes. Build and unit policies pass for permitted IDs/ancestors, rejected pause/background/metrics/profile controls, and notification wording rules.
-
-Not yet verified end to end in a workout: avatar high-fives, leaderboard page scrolling, music-card opening and hearts, new incoming high-five responses, blocking blank left-card space, pause/time/metrics protection, and automatic Full Screen Lock fallback. A permitted-control policy test does not establish a working social action on the tablet.
-
-Social locks always expire after 30 seconds. Current control support is pinned to com.peloton.activity versionCode 2083457. Three-finger escape is OFF by default pending sweaty-ride testing.
+The normal lock uses the selected duration immediately. The only 30-second lock
+is the optional isolated **Test Touch Guard** screen. Report the exact versions,
+mode, action and app-defined diagnostic when filing an issue. Do not include other
+riders' private information, account data or signing material.

@@ -1,58 +1,48 @@
 # Touch Guard
 
-**Sweat away and get that PR!**
+Keep sweat from tapping your Peloton screen. Touch Guard places a clear touch-blocking overlay over your ride, with a physical-button shortcut to turn it on or off.
 
-Touch Guard catches accidental sweat touches on an indoor bike screen. One app, one Android accessibility entry, two modes selected in its settings:
+**Current beta: [v0.2.0-preview14](https://github.com/murface/touch-guard/releases/tag/v0.2.0-preview14).** Tested on one Original Bike running Android 11. Social Mode supports the inspected Peloton workout app version 2.8.3457 (versionCode 2083457); other versions and bike models are unverified. Independent community project, not affiliated with Peloton or OpenPelo.
 
-| Mode | Behavior |
+## Two modes, one app
+
+Choose the mode in Touch Guard's settings:
+
+| Mode | What you can touch |
 | --- | --- |
-| **Full Screen Lock** | Blocks every screen touch while your workout stays visible. |
-| **Lock with Social Access — experimental** | Keeps the full blocking layer in place and invokes only recognized avatar high-fives, leaderboard scrolling, song-card opening, and song hearts. Other controls stay blocked. Incoming high-five replies are implemented experimentally and remain unverified. |
+| **Full Lock** | No touchscreen controls while locked. |
+| **Social Mode** | Supported leaderboard avatars for high-fives, leaderboard page scrolling, incoming high-five/milestone hand buttons, the music-note card, and song hearts. Other touches remain blocked, including pause, metrics and the time bar. |
 
-Hold **Volume Down for five seconds** to turn either mode ON or OFF. Release fully between holds. Social mode is currently limited to **30 seconds** for testing.
+Social Mode identifies specific controls locally rather than opening a rectangle of the screen. Unsupported workout screens stay fully blocked until supported controls are recognized. Leaderboard swipes move one page at a time; high-fives show local feedback and may not show Peloton's usual animation. A confirmation means the control's action was accepted, not independent delivery verification.
 
-![Touch Guard cycling illustration](app/src/main/res/drawable-nodpi/ride_hero.png)
+## Everyday use
 
-## Download and setup
+1. Install and enable the **single Touch Guard accessibility service**. Turn its top **Use Touch Guard** switch **ON**, and leave Android's separate **Touch Guard shortcut** **OFF**.
+2. Choose **Full Lock** or **Social Mode**, and a maximum duration longer than your planned ride.
+3. Open your class normally. Hold **Volume Down alone for five seconds**, then release completely, to turn protection ON. Repeat to turn it OFF.
 
-[Download v0.2.0-preview2](https://github.com/murface/touch-guard/releases/tag/v0.2.0-preview2) · [Installation](docs/INSTALLATION.md) · [Testing and limitations](docs/TESTING.md) · [Privacy](PRIVACY.md)
+The default maximum is **2 hours**, with 30, 60, 90, 120, 180, 240 or 360 minutes available. Normal activation uses this duration immediately. **There is no required first-lock test and no automatic 30-second preview.** The separate **Test Touch Guard** screen offers an optional 30-second test.
 
-Install the signed APK through OpenPelo's **Install local APK** option while the bike is idle. Enable the single **Touch Guard** entry in Android Accessibility. Leave Android's separate accessibility shortcut OFF. Open the entry's **Settings** row, choose your lock mode, and complete the 30-second hardware-unlock test. A computer and developer debugging access are needed for installation; this is not a Play Store app.
+ON/OFF messages confirm status without a persistent corner banner. ON says “Sweat away and go get the PR 💪 🙌”. After turning protection OFF, **the screen may need to be completely dry, with dry hands, before touch controls work normally**.
 
-Existing installations can update using the same signing identity. Android may ask you to re-enable Touch Guard because this version combines local control access and key filtering into one permission. Preview1's separate Social Access entry has been removed.
+[Detailed installation, updating and recovery](docs/INSTALLATION.md) · [Release notes](docs/RELEASE_NOTES.md) · [Testing and limits](docs/TESTING.md) · [Privacy](PRIVACY.md)
 
-## Early preview — limited testing
+## What has been checked
 
-Touch blocking, the automatic test timeout, and physical five-second ON/OFF toggles were tested on one Original Peloton Bike tablet **PLTN-RB1V0-2, Android 11**. The single-service preview installs and its menu displays on that bike. Build and shortcut/social-policy unit tests pass.
-
-**The new Social actions have not yet passed end-to-end workout testing.** Incoming high-five replies, a full sweaty ride, continuous class video/audio/metrics, and the complete emergency-recovery checklist remain unverified. The control whitelist supports only Peloton workout app versionCode **2083457** (2.8.3457); unsupported screens fall back to Full Screen Lock. Unknown actions stay blocked. Leaderboard swipes move one page at a time.
-
-Bike+, Tread, other tablets/firmware, and other Android versions are untested. Android below 11 is unsupported. [v0.1.2](https://github.com/murface/touch-guard/releases/tag/v0.1.2) remains available as the older Full Lock-only beta; its permission model differs.
-
-## Shortcut and recovery
-
-A short Volume Down press lowers media volume one step on release. Holding it for five seconds toggles protection without adjusting volume. Continuous long-press volume adjustment is replaced while this shortcut is enabled. Optional both-volume-button mode can conflict with Android's accessibility shortcut.
-
-The first lock after a service restart or shortcut change lasts at most 30 seconds. Unlock it with the hardware shortcut to enable longer **Full Screen Lock** durations (30/60/90/120 minutes). Social preview locks remain capped at 30 seconds.
-
-Unlock using the five-second shortcut or let the timer expire. Other implemented escapes include display power-off, a notification action, and the [Mac emergency helper](scripts/Unlock-Touch-Guard.command). Three-finger eight-second escape is experimental and **OFF by default**; sweat-contact testing is pending. Verify recovery while idle. Protection starts OFF after restart; an enabled accessibility service does not itself mean the screen is locked.
+On the owner's Original Bike: Full Lock and the hardware toggle; Social Mode leaderboard scrolling, outgoing avatar high-fives, incoming replies, music-card opening and song hearts; long-duration configuration without the former 30-second gate; and signed updates. The owner reports successful ride use. Extended testing of the newest Social Mode build, every escape path, other tablets and future Peloton updates remains outstanding. See the test matrix for the distinction between owner reports, device inspection and automated tests.
 
 ## Privacy and permissions
 
-One accessibility permission covers key filtering, a transparent blocking overlay, and local control access for Social mode. **Full Screen Lock does not inspect screen content.** Social mode checks Peloton control IDs, positions, and high-five wording locally during protected gestures. No screen data is saved or uploaded. No internet permission, accounts, analytics, ads, rooting, or changes to Peloton's workout app. See [Privacy](PRIVACY.md).
+No Internet permission, uploads, ads, analytics or account login. Full Lock does not inspect screen content. Social Mode reads known Peloton control IDs, bounds and relevant high-five wording locally during protected gestures, without saving that screen content. One Android accessibility permission covers both modes. Neither mode changes Peloton's app, firmware or workout records.
 
 ## Build
 
-Requires JDK 17, Android SDK platform 35, and build-tools 35.0.0. The wrapper uses Gradle 8.11.1, Android Gradle Plugin 8.9.1, and Kotlin 2.1.20.
+JDK 17, Android SDK 35, build-tools 35.0.0, Gradle 8.11.1, AGP 8.9.1 and Kotlin 2.1.20:
 
 ```sh
 ./gradlew :app:assembleDebug :app:testDebugUnitTest
 ```
 
-Debug APKs use a different signing identity and cannot update the distributed APK directly. Optional release signing reads `TOUCHGUARD_KEYSTORE`, `TOUCHGUARD_STORE_PASSWORD`, `TOUCHGUARD_KEY_ALIAS`, and `TOUCHGUARD_KEY_PASSWORD`. No signing secrets are distributed.
+Development APKs from CI use a different signing certificate from the published release. For updates, use the signed release APK. Private signing keys are not included. Release signing uses the `TOUCHGUARD_KEYSTORE`, `TOUCHGUARD_STORE_PASSWORD`, `TOUCHGUARD_KEY_ALIAS` and `TOUCHGUARD_KEY_PASSWORD` environment variables defined in the build configuration.
 
-## Community
-
-Please report tablet model, Android/Peloton OS and workout app versions, and exactly which functions you tested. Do not include pairing codes, credentials, or private ride screenshots. [OpenPelo catalog request](https://github.com/doudar/Openpelo/issues/69) is pending; inclusion is the maintainer's decision.
-
-Independent community project, not affiliated with or endorsed by Peloton or OpenPelo. MIT license; third-party notices are included. The original cycling illustration was AI-generated and its prompt is recorded in `artwork-prompt.txt`.
+MIT licensed. [Third-party notices](THIRD_PARTY_NOTICES.md).

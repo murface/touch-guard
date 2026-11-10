@@ -17,4 +17,4 @@ if [ "$found" -eq 0 ]; then
   echo "No connected Peloton found. Reconnect it in OpenPelo and retry."
   exit 1
 fi
-echo "Touch Guard stopped. Touch control is restored. Reopen Touch Guard to use it again."
+echo "Touch Guard stopped. If touch is still unresponsive, dry the screen and your hands completely and briefly sleep/wake the display. Reopen Touch Guard to use it again."

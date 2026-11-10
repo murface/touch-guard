@@ -27,25 +27,28 @@ class MainActivity : Activity() {
     private lateinit var permission: Button
     private lateinit var protect: Button
     private lateinit var shortcut: Spinner
+    private lateinit var socialDiagnostic: TextView
+    private lateinit var lockDiagnostic: TextView
     private var lastSummary=""
     private val prefs get()=getSharedPreferences("guard",MODE_PRIVATE)
     private val refresh=object:Runnable {
         override fun run() {
             val s=GuardService.instance
-            val summary="${s != null}/${s?.locked}/${s?.hardwareVerified}/${s?.lastMessage}/${s?.blockedTouches}/${s?.socialActive}/${prefs.getBoolean("social_mode",false)}"
+            val summary="${prefs.getString("lock_diagnostic", "")}/${prefs.getString("social_diagnostic", "No Social touches checked yet")}/${s != null}/${s?.locked}/${s?.lastMessage}/${s?.blockedTouches}/${s?.socialActive}/${prefs.getBoolean("social_mode",false)}"
             if(summary != lastSummary) {
                 lastSummary=summary
                 status.text=if(s?.locked == true) "Protection is ON" else "Protection is OFF"
                 status.setTextColor(if(s?.locked == true) mint else ink)
                 detail.text=when {
                     s == null -> "Enable Touch Guard once to use either lock mode and the volume shortcut."
-                    s.socialActive -> "Social mode: recognized high-fives, song hearts, and leaderboard swipes only. All raw touches remain intercepted. Preview expires in 30 seconds."
+                    s.socialActive -> s.lastMessage+". Recognized social controls only; other touches stay blocked."
                     s.locked -> "Sweat away and get that PR! Your screen is protected."
-                    !s.hardwareVerified -> "Service enabled. First, try a 30-second safety test and unlock with your chosen shortcut."
-                    else -> "Ready for your next ride. Hold your shortcut for five seconds to turn protection on."
+                    else -> "Ready for your next ride. Hold your shortcut for five seconds to turn protection on.\n\nAfter turning protection off, the screen may need to be completely dry, with dry hands, before touch controls work normally."
                 }
+                lockDiagnostic.text="Last lock event: "+prefs.getString("lock_diagnostic","No lock events yet")
+                socialDiagnostic.text="Last Social check: "+prefs.getString("social_diagnostic","No Social touches checked yet")
                 permission.text=if(s == null) "Enable Touch Guard" else "Accessibility service enabled  ·  Manage"
-                protect.text=if(prefs.getBoolean("social_mode",false)) "Try Lock with Social Access — 30 seconds" else if(s?.hardwareVerified == true) "Turn protection ON" else "Try a 30-second safety test"
+                protect.text="Test Touch Guard"
                 protect.isEnabled=s != null
                 protect.alpha=if(s == null) 0.45f else 1f
             }
@@ -129,31 +132,34 @@ class MainActivity : Activity() {
             status=copy("Protection is OFF",27f,ink,true)
             gap(6); detail=copy("")
             gap(20)
-            protect=action("Try a 30-second safety test",true) {
-                val s=GuardService.instance
-                if(s == null) return@action
-                arm(!s.hardwareVerified,prefs.getInt("ride_minutes",60))
+            protect=action("Test Touch Guard",true) {
+                startActivity(Intent(this@MainActivity,ProbeActivity::class.java))
             }; addView(protect)
             gap(12)
             addView(action("Unlock now") { GuardService.instance?.unlock("App unlock") })
         }
         card("LOCK MODE") {
             copy("Your ride. Your choice.",18f,ink,true); gap(8)
-            addView(selector(arrayOf("Full Screen Lock  ·  blocks every touch","Lock with Social Access  ·  30-second preview"),if(prefs.getBoolean("social_mode",false)) 1 else 0) { position ->
+            addView(selector(arrayOf("Full Lock","Social Mode"),if(prefs.getBoolean("social_mode",false)) 1 else 0) { position ->
                 prefs.edit().putBoolean("social_mode",position==1).apply()
             })
             gap(12)
-            copy("Full Screen Lock",18f,ink,true)
+            copy("Full Lock",18f,ink,true)
             copy("Blocks every screen touch. Your workout stays visible; use the volume shortcut to unlock.")
             gap(14)
-            copy("Lock with Social Access",18f,ink,true)
+            copy("Social Mode",18f,ink,true)
             copy("Keeps pause, metrics, time, settings, and background touches locked. Allows recognized leaderboard avatar high-fives, leaderboard scrolling, opening the song card, and liking songs. Incoming high-five replies are included experimentally and still need testing.")
             gap(10)
-            copy("Social preview lasts 30 seconds. Leaderboard swipes move one page at a time. Unsupported workout screens fall back to Full Screen Lock. Only the inspected Original Bike workout app version is supported.",13f,Color.rgb(255,190,133))
+            copy("Your chosen duration applies immediately to both modes. Leaderboard swipes move one page at a time. On unsupported workout screens all touches stay blocked; Social controls become available when the supported workout is recognized. Only the inspected Original Bike workout app version is supported.",13f,Color.rgb(255,190,133))
             gap(12)
             copy("One app. One Android accessibility entry. Choose either mode here, then use the same five-second volume shortcut to turn protection ON and OFF.",14f,mint)
         }
 
+        card("SOCIAL TEST STATUS") {
+            socialDiagnostic=copy("",14f,mint)
+            gap(8);lockDiagnostic=copy("",14f,mint)
+            copy("This local result helps diagnose blocked social controls. It records only Touch Guard’s reason, never rider names, song titles, notification wording, or screen images.",13f)
+        }
         card("YOUR SHORTCUT") {
             copy("Hold for five seconds. Release. Ride on.",18f,ink,true); gap(8)
             shortcut=selector(arrayOf("Volume Down  ·  hold 5 seconds","Both volume buttons  ·  hold 5 seconds"),if(prefs.getBoolean("both_keys",false)) 1 else 0) { position ->
@@ -166,15 +172,15 @@ class MainActivity : Activity() {
             gap(8)
             copy("With Volume Down selected, a short press lowers media volume one step when released. A five-second hold toggles protection without changing volume. Both-button mode may conflict with Android’s TalkBack shortcut.",13f)
             gap(20); copy("Maximum lock duration",16f,ink,true); gap(8)
-            val choices=intArrayOf(30,60,90,120)
-            addView(selector(arrayOf("30 minutes","60 minutes","90 minutes","120 minutes"),choices.indexOf(prefs.getInt("ride_minutes",60)).coerceAtLeast(0)) {
-                prefs.edit().putInt("ride_minutes",choices[it]).apply()
+            val choices=intArrayOf(30,60,90,120,180,240,360)
+            addView(selector(arrayOf("30 minutes","1 hour","90 minutes","2 hours · default","3 hours","4 hours","6 hours"),choices.indexOf(prefs.getInt("lock_minutes",120)).let { if(it<0) 3 else it }) {
+                prefs.edit().putInt("lock_minutes",choices[it]).apply()
             })
-            gap(8); copy("Choose longer than your class. Protection switches off automatically when this time runs out.",13f)
+            gap(8); copy("Applies immediately to both modes, including after a restart or update. Defaults to 2 hours; choose up to 6 hours for longer rides. Protection switches off automatically when this time runs out. Hold the volume shortcut to unlock sooner.",13f)
         }
         card("SETUP & SAFETY") {
             copy("Service enabled ≠ protection on",18f,ink,true); gap(6)
-            copy("Enable the single Touch Guard accessibility entry once. Choose your lock mode above. Leave Android’s separate accessibility shortcut OFF; Touch Guard handles the volume shortcut itself. Touches are blocked only when the ON banner is visible.")
+            copy("Enable the single Touch Guard accessibility entry once. Choose your lock mode above. Leave Android’s separate accessibility shortcut OFF; Touch Guard handles the volume shortcut itself. The brief ON/OFF popup confirms protection. The workout has no persistent banner; check status here or in its notification.")
             gap(16)
             permission=action("Enable Touch Guard") {
                 android.app.AlertDialog.Builder(this@MainActivity)
@@ -186,7 +192,7 @@ class MainActivity : Activity() {
             gap(12)
             addView(action("Open the safe touch-test screen") { startActivity(Intent(this@MainActivity,ProbeActivity::class.java)) })
             gap(12)
-            copy("Each time the service starts, or you change shortcuts, the first lock is a 30-second test. Unlock with your shortcut to enable longer locks.",13f)
+            copy("The separate Test Touch Guard screen offers an optional 30-second touch test. Normal volume-button activation always uses your selected duration; it never starts that test automatically.",13f)
             gap(12)
             copy("Need an escape?",16f,ink,true); gap(6)
             copy("Use the five-second hardware shortcut, wait for the timeout, or turn the display off with the physical power button. A Mac emergency-unlock tool is also available. Protection always starts OFF after a restart.",13f)
@@ -209,13 +215,8 @@ class MainActivity : Activity() {
             gap(12)
             copy("Independent community project. Not affiliated with Peloton. Tested touch blocking and volume-button unlocking on an Original Bike with Android 11; workout playback testing is still in progress.",12f)
         }
-        column.copy("TOUCH GUARD  ·  SOCIAL PREVIEW 0.2.0-2",12f,muted,true).gravity=Gravity.CENTER
+        column.copy("TOUCH GUARD  ·  SOCIAL PREVIEW 0.2.0-13",12f,muted,true).gravity=Gravity.CENTER
         setContentView(scroll)
-    }
-    private fun arm(test:Boolean,minutes:Int) {
-        val s=GuardService.instance ?: return
-        moveTaskToBack(true)
-        handler.postDelayed({ s.begin(test,minutes) },800)
     }
     override fun onResume() { super.onResume(); lastSummary=""; handler.post(refresh) }
     override fun onPause() { handler.removeCallbacks(refresh); super.onPause() }

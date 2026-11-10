@@ -3,7 +3,7 @@
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="100"
-    android:accessibilityFlags="flagRequestFilterKeyEvents|flagReportViewIds"
+    android:accessibilityFlags="flagRequestFilterKeyEvents|flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
     android:canRequestFilterKeyEvents="true"
     android:canRetrieveWindowContent="true"
     android:settingsActivity="com.touchguard.peloton.MainActivity" />
